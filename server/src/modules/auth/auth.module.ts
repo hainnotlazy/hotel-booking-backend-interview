@@ -3,10 +3,21 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "src/entities";
+import { JwtStrategy } from "./strategies";
+import { APP_GUARD } from "@nestjs/core";
+import { JwtAuthGuard } from "./guards";
+import { UsersModule } from "../users/users.module";
 
 @Module({
-	imports: [TypeOrmModule.forFeature([User])],
+	imports: [TypeOrmModule.forFeature([User]), UsersModule],
 	controllers: [AuthController],
-	providers: [AuthService],
+	providers: [
+		AuthService,
+		JwtStrategy,
+		{
+			provide: APP_GUARD,
+			useClass: JwtAuthGuard,
+		},
+	],
 })
 export class AuthModule {}

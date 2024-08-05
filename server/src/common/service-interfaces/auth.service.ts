@@ -1,6 +1,15 @@
 import { RegisterUserDto } from "src/common/dtos/auth/register-user.dto";
 import { User } from "src/entities";
+import { LoginUserDto } from "../dtos";
+
+export interface AuthenticatedResponse {
+	user: User;
+	accessToken: string;
+	refreshToken: string;
+}
 
 export interface IAuthService {
-	register(registerUserDto: RegisterUserDto): Promise<User>;
+	login(loginUserDto: LoginUserDto): Promise<AuthenticatedResponse>;
+	register(registerUserDto: RegisterUserDto): Promise<AuthenticatedResponse>;
+	generateToken(user: User, tokenType: "access" | "refresh"): string;
 }
