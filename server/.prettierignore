@@ -1,0 +1,11 @@
+**/.git
+**/.svn
+**/.hg
+**/public
+**/node_modules
+**/build
+**/test
+
+**/*.min.js
+**/*.bundle.js
+**/*.json
