@@ -1,9 +1,10 @@
-import { Body, Controller, Get, HttpCode, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Post, Req, UseFilters, UseGuards } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { LoginUserDto, LogoutUserDto, RefreshTokenDto, RegisterUserDto } from "src/common/dtos";
 import { AccessToken, PublicRoute } from "src/common/decorators";
 import { GoogleAuthGuard } from "./guards";
 import { GoogleProfile } from "./strategies";
+import { OauthFilter } from "./filters";
 
 @Controller("auth")
 export class AuthController {
@@ -41,11 +42,18 @@ export class AuthController {
 
 	@PublicRoute()
 	@UseGuards(GoogleAuthGuard)
+	@UseFilters(OauthFilter)
 	@Get("google/callback")
 	async googleOAuthCallback(@Req() req) {
 		const user: GoogleProfile = req.user;
 
 		return await this.authService.googleLogin(user);
+	}
+
+	@PublicRoute()
+	@Get("google/failure")
+	googleOAuthFailure() {
+		return "OAuth Google failed. Return to frontend oauth page later.";
 	}
 
 	@Get("test")
