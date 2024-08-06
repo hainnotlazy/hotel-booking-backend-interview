@@ -7,6 +7,8 @@ import { LoginUserDto, RegisterUserDto } from "src/common/dtos";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as bcrypt from "bcrypt";
+import { TokenPayload } from "./interfaces";
+import { RedisService } from "src/shared/redis/redis.service";
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -18,6 +20,7 @@ export class AuthService implements IAuthService {
 		private readonly userRepository: Repository<User>,
 		private readonly configService: ConfigService,
 		private readonly jwtService: JwtService,
+		private readonly redisService: RedisService,
 	) {
 		this.ACCESS_TOKEN_EXPIRATION_TIME = this.configService.get<string>(
 			"ACCESS_TOKEN_EXPIRATION_TIME",
@@ -44,15 +47,19 @@ export class AuthService implements IAuthService {
 		if (!existedUser) {
 			throw new NotFoundException("User not found");
 		}
-
 		if (!bcrypt.compareSync(password, existedUser.password)) {
 			throw new BadRequestException("Password is incorrect");
 		}
 
+		const tokenPayload: TokenPayload = {
+			uid: existedUser.id,
+			email: existedUser.email,
+		};
+
 		return {
 			user: existedUser,
-			accessToken: this.generateToken(existedUser),
-			refreshToken: this.generateToken(existedUser, "refresh"),
+			accessToken: this.generateToken(tokenPayload),
+			refreshToken: this.generateToken(tokenPayload, "refresh"),
 		};
 	}
 
@@ -67,19 +74,19 @@ export class AuthService implements IAuthService {
 		});
 		const savedUser = await this.userRepository.save(newUser);
 
+		const tokenPayload: TokenPayload = {
+			uid: savedUser.id,
+			email: savedUser.email,
+		};
+
 		return {
 			user: savedUser,
-			accessToken: this.generateToken(savedUser),
-			refreshToken: this.generateToken(savedUser, "refresh"),
+			accessToken: this.generateToken(tokenPayload),
+			refreshToken: this.generateToken(tokenPayload, "refresh"),
 		};
 	}
 
-	generateToken(user: User, tokenType: "access" | "refresh" = "access"): string {
-		const payload = {
-			uid: user.id,
-			email: user.email,
-		};
-
+	generateToken(payload: TokenPayload, tokenType: "access" | "refresh" = "access"): string {
 		if (tokenType === "refresh") {
 			return this.jwtService.sign(payload, {
 				expiresIn: this.REFRESH_TOKEN_EXPIRATION_TIME,
@@ -90,6 +97,37 @@ export class AuthService implements IAuthService {
 		return this.jwtService.sign(payload, {
 			expiresIn: this.ACCESS_TOKEN_EXPIRATION_TIME,
 		});
+	}
+
+	async refreshToken(refreshToken: string): Promise<AuthenticatedResponse> {
+		// Check if refresh token is blacklisted
+		const isRefreshTokenBlacklisted = await this.redisService.getKey({
+			key: refreshToken,
+		});
+		if (isRefreshTokenBlacklisted) {
+			throw new BadRequestException("Refresh token is blacklisted!");
+		}
+
+		// Blacklist old refresh token
+		this.redisService.setKey({
+			key: refreshToken,
+			value: "blacklisted",
+		});
+
+		// Decode token and create new payload
+		const payload = this.jwtService.verify(refreshToken, {
+			secret: this.REFRESH_TOKEN_SECRET,
+		});
+		const { uid, email } = payload;
+		const tokenPayload: TokenPayload = {
+			uid,
+			email,
+		};
+
+		return {
+			accessToken: this.generateToken(tokenPayload),
+			refreshToken: this.generateToken(tokenPayload, "refresh"),
+		};
 	}
 
 	private async validateEmail(email: string): Promise<void> {

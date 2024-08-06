@@ -7,9 +7,10 @@ import { JwtStrategy } from "./strategies";
 import { APP_GUARD } from "@nestjs/core";
 import { JwtAuthGuard } from "./guards";
 import { UsersModule } from "../users/users.module";
+import { SharedModule } from "src/shared/shared.module";
 
 @Module({
-	imports: [TypeOrmModule.forFeature([User]), UsersModule],
+	imports: [TypeOrmModule.forFeature([User]), UsersModule, SharedModule],
 	controllers: [AuthController],
 	providers: [
 		AuthService,

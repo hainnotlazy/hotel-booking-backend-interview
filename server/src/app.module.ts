@@ -2,12 +2,19 @@ import { ClassSerializerInterceptor, Module } from "@nestjs/common";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { ConfigModule } from "@nestjs/config";
-import { ConfigOptions, JwtConfigOptions, TypeOrmConfigOptions } from "./configurations";
+import {
+	ConfigOptions,
+	JwtConfigOptions,
+	RedisConfigOptions,
+	TypeOrmConfigOptions,
+} from "./configurations";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AuthModule } from "./modules/auth/auth.module";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 import { JwtModule } from "@nestjs/jwt";
 import { UsersModule } from "./modules/users/users.module";
+import { RedisModule } from "@nestjs-modules/ioredis";
+import { SharedModule } from './shared/shared.module';
 
 @Module({
 	imports: [
@@ -19,8 +26,10 @@ import { UsersModule } from "./modules/users/users.module";
 			global: true,
 			useClass: JwtConfigOptions,
 		}),
+		RedisModule.forRoot(RedisConfigOptions),
 		AuthModule,
 		UsersModule,
+		SharedModule,
 	],
 	controllers: [AppController],
 	providers: [

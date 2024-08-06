@@ -1,0 +1,45 @@
+import { InjectRedis } from "@nestjs-modules/ioredis";
+import { Injectable } from "@nestjs/common";
+import { Redis } from "ioredis";
+import {
+	GetKeyRedisOptions,
+	IRedisService,
+	RedisDatabase,
+	SetKeyRedisOptions,
+} from "src/common/service-interfaces";
+
+@Injectable()
+export class RedisService implements IRedisService {
+	constructor(
+		@InjectRedis()
+		private readonly redisService: Redis,
+	) {}
+
+	async getKey(options: GetKeyRedisOptions): Promise<string> {
+		const { key, database = RedisDatabase.TOKEN_BLACKLIST } = options;
+
+		await this.selectDatabase(database);
+		return this.redisService.get(key);
+	}
+
+	async setKey(options: SetKeyRedisOptions): Promise<"OK"> {
+		const { key, value, database = RedisDatabase.TOKEN_BLACKLIST, expiresIn } = options;
+
+		await this.selectDatabase(database);
+		await this.redisService.set(key, value);
+		if (expiresIn) {
+			await this.redisService.expire(key, expiresIn);
+		}
+
+		return "OK";
+	}
+
+	async flushDatabase(database: RedisDatabase): Promise<"OK"> {
+		await this.selectDatabase(database);
+		return await this.redisService.flushdb();
+	}
+
+	async selectDatabase(database: RedisDatabase): Promise<"OK"> {
+		return await this.redisService.select(database);
+	}
+}

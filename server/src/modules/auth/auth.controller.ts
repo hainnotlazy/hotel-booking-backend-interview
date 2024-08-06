@@ -1,6 +1,6 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Post } from "@nestjs/common";
 import { AuthService } from "./auth.service";
-import { LoginUserDto, RegisterUserDto } from "src/common/dtos";
+import { LoginUserDto, RefreshTokenDto, RegisterUserDto } from "src/common/dtos";
 import { PublicRoute } from "src/common/decorators";
 
 @Controller("auth")
@@ -9,6 +9,7 @@ export class AuthController {
 
 	@PublicRoute()
 	@Post("login")
+	@HttpCode(200)
 	async login(@Body() loginUserDto: LoginUserDto) {
 		return await this.authService.login(loginUserDto);
 	}
@@ -17,5 +18,11 @@ export class AuthController {
 	@Post("register")
 	async register(@Body() registerUserDto: RegisterUserDto) {
 		return await this.authService.register(registerUserDto);
+	}
+
+	@PublicRoute()
+	@Post("refresh")
+	async refreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
+		return await this.authService.refreshToken(refreshTokenDto.refresh_token);
 	}
 }
