@@ -8,6 +8,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { JwtAuthGuard } from "./guards";
 import { UsersModule } from "../users/users.module";
 import { SharedModule } from "src/shared/shared.module";
+import { GoogleStrategy } from "./strategies/google.strategy";
 
 @Module({
 	imports: [TypeOrmModule.forFeature([User]), UsersModule, SharedModule],
@@ -15,6 +16,7 @@ import { SharedModule } from "src/shared/shared.module";
 	providers: [
 		AuthService,
 		JwtStrategy,
+		GoogleStrategy,
 		{
 			provide: APP_GUARD,
 			useClass: JwtAuthGuard,

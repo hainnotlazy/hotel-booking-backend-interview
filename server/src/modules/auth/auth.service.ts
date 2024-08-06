@@ -9,6 +9,9 @@ import { ConfigService } from "@nestjs/config";
 import * as bcrypt from "bcrypt";
 import { TokenPayload } from "./interfaces";
 import { RedisService } from "src/shared/redis/redis.service";
+import { GoogleProfile } from "./strategies";
+import { UsersService } from "../users/users.service";
+import { v4 as uuidv4 } from "uuid";
 
 @Injectable()
 export class AuthService implements IAuthService {
@@ -18,6 +21,7 @@ export class AuthService implements IAuthService {
 	constructor(
 		@InjectRepository(User)
 		private readonly userRepository: Repository<User>,
+		private readonly usersService: UsersService,
 		private readonly configService: ConfigService,
 		private readonly jwtService: JwtService,
 		private readonly redisService: RedisService,
@@ -68,12 +72,10 @@ export class AuthService implements IAuthService {
 
 		await this.validateEmail(email);
 
-		const newUser = this.userRepository.create({
+		const savedUser = await this.usersService.createUser({
 			email,
-			password, // Handle to hash password at entity layer
+			password,
 		});
-		const savedUser = await this.userRepository.save(newUser);
-
 		const tokenPayload: TokenPayload = {
 			uid: savedUser.id,
 			email: savedUser.email,
@@ -128,6 +130,46 @@ export class AuthService implements IAuthService {
 			accessToken: this.generateToken(tokenPayload),
 			refreshToken: this.generateToken(tokenPayload, "refresh"),
 		};
+	}
+
+	async googleLogin(googleProfile: GoogleProfile): Promise<AuthenticatedResponse> {
+		const { fullname, email } = googleProfile;
+
+		const existedUser = await this.userRepository.findOne({
+			where: {
+				email,
+			},
+		});
+
+		if (!existedUser) {
+			const newUser = await this.usersService.createUser({
+				email,
+				password: uuidv4(), // Generate random password
+				fullname,
+			});
+
+			const tokenPayload: TokenPayload = {
+				uid: newUser.id,
+				email: newUser.email,
+			};
+
+			return {
+				user: newUser,
+				accessToken: this.generateToken(tokenPayload),
+				refreshToken: this.generateToken(tokenPayload, "refresh"),
+			};
+		} else {
+			const tokenPayload: TokenPayload = {
+				uid: existedUser.id,
+				email: existedUser.email,
+			};
+
+			return {
+				user: existedUser,
+				accessToken: this.generateToken(tokenPayload),
+				refreshToken: this.generateToken(tokenPayload, "refresh"),
+			};
+		}
 	}
 
 	private async validateEmail(email: string): Promise<void> {
