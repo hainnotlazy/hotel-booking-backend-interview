@@ -13,7 +13,10 @@ export interface AuthenticatedResponse {
 export interface IAuthService {
 	login(loginUserDto: LoginUserDto): Promise<AuthenticatedResponse>;
 	register(registerUserDto: RegisterUserDto): Promise<AuthenticatedResponse>;
+	logout(accessToken: string, refreshToken: string): Promise<void>;
 	generateToken(payload: TokenPayload, tokenType: "access" | "refresh"): string;
-	refreshToken(refreshToken: string): Promise<AuthenticatedResponse>;
+	refreshToken(accessToken: string, refreshToken: string): Promise<AuthenticatedResponse>;
+	blacklistToken(token: string, expiresIn: number): Promise<void>;
+	isTokenBlacklisted(token: string): Promise<boolean>;
 	googleLogin(googleProfile: GoogleProfile): Promise<AuthenticatedResponse>;
 }

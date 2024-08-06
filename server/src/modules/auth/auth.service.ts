@@ -1,13 +1,18 @@
 import { AuthenticatedResponse, IAuthService } from "src/common/service-interfaces/auth.service";
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+	BadRequestException,
+	Injectable,
+	InternalServerErrorException,
+	NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "src/entities";
 import { Repository } from "typeorm";
 import { LoginUserDto, RegisterUserDto } from "src/common/dtos";
-import { JwtService } from "@nestjs/jwt";
+import { JsonWebTokenError, JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as bcrypt from "bcrypt";
-import { TokenPayload } from "./interfaces";
+import { RawTokenPayload, TokenPayload } from "./interfaces";
 import { RedisService } from "src/shared/redis/redis.service";
 import { GoogleProfile } from "./strategies";
 import { UsersService } from "../users/users.service";
@@ -43,6 +48,7 @@ export class AuthService implements IAuthService {
 	async login(loginUserDto: LoginUserDto): Promise<AuthenticatedResponse> {
 		const { email, password } = loginUserDto;
 
+		// Validate user
 		const existedUser = await this.userRepository.findOne({
 			where: {
 				email,
@@ -55,6 +61,7 @@ export class AuthService implements IAuthService {
 			throw new BadRequestException("Password is incorrect");
 		}
 
+		// Create token payload
 		const tokenPayload: TokenPayload = {
 			uid: existedUser.id,
 			email: existedUser.email,
@@ -70,8 +77,10 @@ export class AuthService implements IAuthService {
 	async register(registerUserDto: RegisterUserDto): Promise<AuthenticatedResponse> {
 		const { email, password } = registerUserDto;
 
+		// Validate if email is already registered
 		await this.validateEmail(email);
 
+		// Create new user
 		const savedUser = await this.usersService.createUser({
 			email,
 			password,
@@ -88,6 +97,52 @@ export class AuthService implements IAuthService {
 		};
 	}
 
+	async refreshToken(accessToken: string, refreshToken: string): Promise<AuthenticatedResponse> {
+		try {
+			// Blacklist old access token
+			const { uid: accessTokenUserId, exp: accessTokenExpirationTime } =
+				this.jwtService.verify<RawTokenPayload>(accessToken);
+			await this.blacklistToken(accessToken, this.getTimeLeft(accessTokenExpirationTime));
+
+			// Check if refresh token is blacklisted
+			if (await this.isTokenBlacklisted(refreshToken)) {
+				throw new BadRequestException("Refresh token is blacklisted!");
+			}
+
+			// Get refresh token payload
+			const {
+				uid: refreshTokenUserId,
+				email,
+				exp: refreshTokenExpirationTime,
+			} = this.jwtService.verify<RawTokenPayload>(refreshToken, {
+				secret: this.REFRESH_TOKEN_SECRET,
+			});
+
+			// Black list old refresh token
+			await this.blacklistToken(refreshToken, this.getTimeLeft(refreshTokenExpirationTime));
+
+			if (accessTokenUserId !== refreshTokenUserId) {
+				throw new BadRequestException("Token is invalid!");
+			}
+
+			// Create new payload
+			const tokenPayload: TokenPayload = {
+				uid: refreshTokenUserId,
+				email,
+			};
+
+			return {
+				accessToken: this.generateToken(tokenPayload),
+				refreshToken: this.generateToken(tokenPayload, "refresh"),
+			};
+		} catch (err) {
+			if (err instanceof JsonWebTokenError) {
+				throw new BadRequestException("Token is invalid!");
+			}
+			throw new InternalServerErrorException("Somethings went wrong!");
+		}
+	}
+
 	generateToken(payload: TokenPayload, tokenType: "access" | "refresh" = "access"): string {
 		if (tokenType === "refresh") {
 			return this.jwtService.sign(payload, {
@@ -101,35 +156,35 @@ export class AuthService implements IAuthService {
 		});
 	}
 
-	async refreshToken(refreshToken: string): Promise<AuthenticatedResponse> {
-		// Check if refresh token is blacklisted
-		const isRefreshTokenBlacklisted = await this.redisService.getKey({
-			key: refreshToken,
-		});
-		if (isRefreshTokenBlacklisted) {
-			throw new BadRequestException("Refresh token is blacklisted!");
-		}
-
-		// Blacklist old refresh token
-		this.redisService.setKey({
-			key: refreshToken,
+	async blacklistToken(token: string, expiresIn: number): Promise<void> {
+		await this.redisService.setKey({
+			key: token,
 			value: "blacklisted",
+			expiresIn: expiresIn,
+		});
+	}
+
+	async isTokenBlacklisted(token: string): Promise<boolean> {
+		const isTokenBlacklisted = await this.redisService.getKey({
+			key: token,
 		});
 
-		// Decode token and create new payload
-		const payload = this.jwtService.verify(refreshToken, {
-			secret: this.REFRESH_TOKEN_SECRET,
-		});
-		const { uid, email } = payload;
-		const tokenPayload: TokenPayload = {
-			uid,
-			email,
-		};
+		return !!isTokenBlacklisted;
+	}
 
-		return {
-			accessToken: this.generateToken(tokenPayload),
-			refreshToken: this.generateToken(tokenPayload, "refresh"),
-		};
+	async logout(accessToken: string, refreshToken: string): Promise<void> {
+		// Blacklist access token
+		const { exp: accessTokenExpirationTime } = this.jwtService.verify<RawTokenPayload>(accessToken);
+		await this.blacklistToken(accessToken, this.getTimeLeft(accessTokenExpirationTime));
+
+		// Blacklist refresh token
+		const { exp: refreshTokenExpirationTime } = this.jwtService.verify<RawTokenPayload>(
+			refreshToken,
+			{
+				secret: this.REFRESH_TOKEN_SECRET,
+			},
+		);
+		await this.blacklistToken(refreshToken, this.getTimeLeft(refreshTokenExpirationTime));
 	}
 
 	async googleLogin(googleProfile: GoogleProfile): Promise<AuthenticatedResponse> {
@@ -141,6 +196,7 @@ export class AuthService implements IAuthService {
 			},
 		});
 
+		// Create new user if email is not registered
 		if (!existedUser) {
 			const newUser = await this.usersService.createUser({
 				email,
@@ -158,7 +214,9 @@ export class AuthService implements IAuthService {
 				accessToken: this.generateToken(tokenPayload),
 				refreshToken: this.generateToken(tokenPayload, "refresh"),
 			};
-		} else {
+		}
+		// Return tokens if email is already registered
+		else {
 			const tokenPayload: TokenPayload = {
 				uid: existedUser.id,
 				email: existedUser.email,
@@ -178,8 +236,15 @@ export class AuthService implements IAuthService {
 				email,
 			},
 		});
+
 		if (isEmailExisted) {
 			throw new BadRequestException("Email already existed!");
 		}
+	}
+
+	private getTimeLeft(expirationTime: number): number {
+		const now = Math.floor(new Date().getTime() / 1000);
+
+		return expirationTime > now ? expirationTime - now : 0;
 	}
 }
