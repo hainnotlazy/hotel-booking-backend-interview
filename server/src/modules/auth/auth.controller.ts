@@ -107,6 +107,9 @@ export class AuthController {
 					"Refresh token is blacklisted!": {
 						value: "Refresh token is blacklisted!",
 					},
+					"User not found": {
+						value: "User not found",
+					},
 					"Token is invalid!": {
 						value: "Token is invalid!",
 					},
@@ -115,11 +118,8 @@ export class AuthController {
 		},
 	})
 	@ApiInternalServerErrorResponse({ description: "Internal server error" })
-	async refreshToken(
-		@AccessToken() accessToken: string,
-		@Body() refreshTokenDto: RefreshTokenDto,
-	): Promise<AuthenticatedResponse> {
-		return await this.authService.refreshToken(accessToken, refreshTokenDto.refresh_token);
+	async refreshToken(@Body() refreshTokenDto: RefreshTokenDto): Promise<AuthenticatedResponse> {
+		return await this.authService.refreshToken(refreshTokenDto.refresh_token);
 	}
 
 	@PublicRoute()

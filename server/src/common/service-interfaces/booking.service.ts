@@ -29,8 +29,9 @@ export interface IBookingService {
 	/**
 	 * Describe: Find booking record
 	 * @param {number} confirmationNo
+	 * @param {boolean} useExternalXMLParser
 	 */
-	findBookingRecord(confirmationNo: number): BookingRecordResponse;
+	findBookingRecord(confirmationNo: number, useExternalXMLParser: boolean): BookingRecordResponse;
 
 	/**
 	 * Describe: Get resv name id

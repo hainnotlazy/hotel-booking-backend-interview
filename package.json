@@ -1,0 +1,16 @@
+{
+  "name": "hotel-booking-backend-interview",
+  "author": {
+    "name": "Lê Thanh Hòa",
+    "email": "thanhhoa6621@gmail.com",
+    "sub_email": "hain6621.dev@gmail.com",
+    "portfolio": "https://hainkone.com"
+  },
+  "version": "1.0.0",
+  "description": "This project is used as interview test for Backend Developer of PA Infotel.",
+  "scripts": {
+    "start:dev": "docker compose -f compose.dev.yaml up --build",
+    "down:dev": "docker compose -f compose.dev.yaml down"
+  },
+  "license": "ISC"
+}

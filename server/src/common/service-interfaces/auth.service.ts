@@ -39,10 +39,9 @@ export interface IAuthService {
 
 	/**
 	 * Describe: Refresh token
-	 * @param {string} accessToken
 	 * @param {string} refreshToken
 	 */
-	refreshToken(accessToken: string, refreshToken: string): Promise<AuthenticatedResponse>;
+	refreshToken(refreshToken: string): Promise<AuthenticatedResponse>;
 
 	/**
 	 * Describe: Blacklist token

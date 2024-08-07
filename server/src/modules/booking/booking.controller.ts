@@ -1,4 +1,12 @@
-import { Controller, Get, Param, ParseIntPipe } from "@nestjs/common";
+import {
+	Controller,
+	DefaultValuePipe,
+	Get,
+	Param,
+	ParseBoolPipe,
+	ParseIntPipe,
+	Query,
+} from "@nestjs/common";
 import { BookingService } from "./booking.service";
 import {
 	ApiBadRequestResponse,
@@ -23,7 +31,11 @@ export class BookingController {
 	})
 	@ApiBadRequestResponse({ description: "Confirmation No not found" })
 	@ApiInternalServerErrorResponse({ description: "Internal server error" })
-	findBookingRecord(@Param("id", ParseIntPipe) id: number): BookingRecordResponse {
-		return this.bookingService.findBookingRecord(id);
+	findBookingRecord(
+		@Param("id", ParseIntPipe) id: number,
+		@Query("use_external_xml_parser", new DefaultValuePipe(true), ParseBoolPipe)
+		useExternalXMLParser: boolean,
+	): BookingRecordResponse {
+		return this.bookingService.findBookingRecord(id, useExternalXMLParser);
 	}
 }

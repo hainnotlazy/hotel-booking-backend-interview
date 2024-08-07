@@ -26,7 +26,7 @@ export class PaymentController {
 	}
 
 	@PublicRoute()
-	@Get("fail")
+	@Get("failure")
 	@ApiOperation({ summary: "Payment failed" })
 	@ApiOkResponse({ description: "Payment failed" })
 	paymentFailed() {

@@ -5,6 +5,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { BookingRecord } from "src/common/models";
 import { BookingRecordResponse, IBookingService } from "src/common/service-interfaces";
+import { ParseXmlService } from "src/shared/services/parse-xml/parse-xml.service";
 
 @Injectable()
 export class BookingService implements IBookingService {
@@ -18,7 +19,7 @@ export class BookingService implements IBookingService {
 		"bookings",
 	);
 
-	constructor() {
+	constructor(private readonly xmlParserService: ParseXmlService) {
 		const xmlParserConfig = {
 			ignoreAttributes: false,
 			attributeNamePrefix: "@_",
@@ -26,9 +27,18 @@ export class BookingService implements IBookingService {
 		this.xmlParser = new XMLParser(xmlParserConfig);
 	}
 
-	findBookingRecord(confirmationNo: number): BookingRecordResponse {
+	findBookingRecord(
+		confirmationNo: number,
+		useExternalXMLParser: boolean = true,
+	): BookingRecordResponse {
 		const fileData = this.getBookingData(confirmationNo);
-		const jsonObject = this.xmlParser.parse(fileData) as BookingRecord;
+
+		let jsonObject: BookingRecord;
+		if (useExternalXMLParser) {
+			jsonObject = this.xmlParser.parse(fileData) as BookingRecord;
+		} else {
+			jsonObject = this.xmlParserService.parseXml(fileData) as BookingRecord;
+		}
 
 		return {
 			confirmation_no: confirmationNo.toString(),
@@ -159,7 +169,7 @@ export class BookingService implements IBookingService {
 				]["hc:RoomStay"]["hc:RoomRates"]["hc:RoomRate"]["hc:Rates"]["hc:Rate"]["hc:Base"];
 
 			return {
-				amount: roomRate["#text"],
+				amount: isString(roomRate["#text"]) ? parseInt(roomRate["#text"]) : roomRate["#text"],
 				currency: roomRate["@_currencyCode"],
 			};
 		} catch (e) {
@@ -244,9 +254,11 @@ export class BookingService implements IBookingService {
 
 	getBookingBalance(jsonObject: BookingRecord): number {
 		try {
-			return jsonObject["soap:Envelope"]["soap:Body"].FetchBookingResponse.HotelReservation[
-				"r:RoomStays"
-			]["hc:RoomStay"]["hc:Total"]["#text"];
+			const bookingBalance =
+				jsonObject["soap:Envelope"]["soap:Body"].FetchBookingResponse.HotelReservation[
+					"r:RoomStays"
+				]["hc:RoomStay"]["hc:Total"]["#text"];
+			return isString(bookingBalance) ? parseInt(bookingBalance) : bookingBalance;
 		} catch (e) {
 			return null;
 		}

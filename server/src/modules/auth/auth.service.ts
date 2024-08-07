@@ -13,7 +13,7 @@ import { JsonWebTokenError, JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as bcrypt from "bcrypt";
 import { RawTokenPayload, TokenPayload } from "./interfaces";
-import { RedisService } from "src/shared/redis/redis.service";
+import { RedisService } from "src/shared/services/redis/redis.service";
 import { GoogleProfile } from "./strategies";
 import { UsersService } from "../users/users.service";
 import { v4 as uuidv4 } from "uuid";
@@ -98,13 +98,8 @@ export class AuthService implements IAuthService {
 		};
 	}
 
-	async refreshToken(accessToken: string, refreshToken: string): Promise<AuthenticatedResponse> {
+	async refreshToken(refreshToken: string): Promise<AuthenticatedResponse> {
 		try {
-			// Blacklist old access token
-			const { uid: accessTokenUserId, exp: accessTokenExpirationTime } =
-				this.jwtService.verify<RawTokenPayload>(accessToken);
-			await this.blacklistToken(accessToken, this.getTimeLeft(accessTokenExpirationTime));
-
 			// Check if refresh token is blacklisted
 			if (await this.isTokenBlacklisted(refreshToken)) {
 				throw new BadRequestException("Refresh token is blacklisted!");
@@ -112,7 +107,7 @@ export class AuthService implements IAuthService {
 
 			// Get refresh token payload
 			const {
-				uid: refreshTokenUserId,
+				uid,
 				email,
 				exp: refreshTokenExpirationTime,
 			} = this.jwtService.verify<RawTokenPayload>(refreshToken, {
@@ -122,14 +117,11 @@ export class AuthService implements IAuthService {
 			// Black list old refresh token
 			await this.blacklistToken(refreshToken, this.getTimeLeft(refreshTokenExpirationTime));
 
-			if (accessTokenUserId !== refreshTokenUserId) {
-				throw new BadRequestException("Token is invalid!");
-			}
-
 			// Create new payload
+			const user = await this.usersService.findById(uid);
 			const tokenPayload: TokenPayload = {
-				uid: refreshTokenUserId,
-				email,
+				uid: user.id,
+				email: user.email,
 			};
 
 			return {
@@ -139,7 +131,10 @@ export class AuthService implements IAuthService {
 		} catch (err) {
 			if (err instanceof JsonWebTokenError) {
 				throw new BadRequestException("Token is invalid!");
+			} else if (err instanceof BadRequestException) {
+				throw err;
 			}
+
 			throw new InternalServerErrorException("Somethings went wrong!");
 		}
 	}
