@@ -14,8 +14,9 @@ import { APP_INTERCEPTOR } from "@nestjs/core";
 import { JwtModule } from "@nestjs/jwt";
 import { UsersModule } from "./modules/users/users.module";
 import { RedisModule } from "@nestjs-modules/ioredis";
-import { SharedModule } from './shared/shared.module';
-import { BookingModule } from './modules/booking/booking.module';
+import { SharedModule } from "./shared/shared.module";
+import { BookingModule } from "./modules/booking/booking.module";
+import { PaymentModule } from "./modules/payment/payment.module";
 
 @Module({
 	imports: [
@@ -32,6 +33,7 @@ import { BookingModule } from './modules/booking/booking.module';
 		UsersModule,
 		SharedModule,
 		BookingModule,
+		PaymentModule,
 	],
 	controllers: [AppController],
 	providers: [

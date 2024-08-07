@@ -26,7 +26,12 @@ export interface BookingRecordResponse {
 }
 
 export interface IBookingService {
+	getBookingRateAmount(confirmationNo: number): {
+		amount: number;
+		currency: string;
+	};
 	findBookingRecord(confirmationNo: number): BookingRecordResponse;
+
 	getResvNameId(jsonObject: BookingRecord): string;
 	getArrival(jsonObject: BookingRecord): string;
 	getDeparture(jsonObject: BookingRecord): string;

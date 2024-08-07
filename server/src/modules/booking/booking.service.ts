@@ -26,14 +26,18 @@ export class BookingService implements IBookingService {
 		this.xmlParser = new XMLParser(xmlParserConfig);
 	}
 
-	findBookingRecord(confirmationNo: number): BookingRecordResponse {
-		const fileName = `booking_${confirmationNo}.xml`;
-		const filePath = path.join(this.BOOKINGS_RESOURCE_PATH, fileName);
-		if (!fs.existsSync(filePath)) {
-			throw new BadRequestException("Booking record not found");
-		}
+	getBookingRateAmount(confirmationNo: number): {
+		amount: number;
+		currency: string;
+	} {
+		const fileData = this.getBookingData(confirmationNo);
+		const jsonObject = this.xmlParser.parse(fileData) as BookingRecord;
 
-		const fileData = fs.readFileSync(filePath, "utf-8");
+		return this.getRateAmount(jsonObject);
+	}
+
+	findBookingRecord(confirmationNo: number): BookingRecordResponse {
+		const fileData = this.getBookingData(confirmationNo);
 		const jsonObject = this.xmlParser.parse(fileData) as BookingRecord;
 
 		return {
@@ -269,5 +273,16 @@ export class BookingService implements IBookingService {
 		} catch (e) {
 			return null;
 		}
+	}
+
+	private getBookingData(confirmationNo: number): string {
+		const fileName = `booking_${confirmationNo}.xml`;
+		const filePath = path.join(this.BOOKINGS_RESOURCE_PATH, fileName);
+		if (!fs.existsSync(filePath)) {
+			throw new BadRequestException("Confirmation No not found");
+		}
+
+		const fileData = fs.readFileSync(filePath, "utf-8");
+		return fileData;
 	}
 }
