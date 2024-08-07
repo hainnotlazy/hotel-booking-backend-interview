@@ -26,16 +26,6 @@ export class BookingService implements IBookingService {
 		this.xmlParser = new XMLParser(xmlParserConfig);
 	}
 
-	getBookingRateAmount(confirmationNo: number): {
-		amount: number;
-		currency: string;
-	} {
-		const fileData = this.getBookingData(confirmationNo);
-		const jsonObject = this.xmlParser.parse(fileData) as BookingRecord;
-
-		return this.getRateAmount(jsonObject);
-	}
-
 	findBookingRecord(confirmationNo: number): BookingRecordResponse {
 		const fileData = this.getBookingData(confirmationNo);
 		const jsonObject = this.xmlParser.parse(fileData) as BookingRecord;

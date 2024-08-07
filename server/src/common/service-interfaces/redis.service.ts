@@ -14,8 +14,27 @@ export enum RedisDatabase {
 }
 
 export interface IRedisService {
+	/**
+	 * Describe: Get key from redis
+	 * @param {GetKeyRedisOptions} options
+	 */
 	getKey(options: GetKeyRedisOptions): Promise<string>;
+
+	/**
+	 * Describe: Set key in redis
+	 * @param {SetKeyRedisOptions} options
+	 */
 	setKey(options: SetKeyRedisOptions): Promise<"OK">;
+
+	/**
+	 * Describe: Flush database
+	 * @param {RedisDatabase} database
+	 */
 	flushDatabase(database: RedisDatabase): Promise<"OK">;
+
+	/**
+	 * Describe: Select database
+	 * @param {RedisDatabase} database
+	 */
 	selectDatabase(database: RedisDatabase): Promise<"OK">;
 }

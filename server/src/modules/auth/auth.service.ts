@@ -23,6 +23,7 @@ export class AuthService implements IAuthService {
 	private readonly ACCESS_TOKEN_EXPIRATION_TIME: string;
 	private readonly REFRESH_TOKEN_EXPIRATION_TIME: string;
 	private readonly REFRESH_TOKEN_SECRET: string;
+
 	constructor(
 		@InjectRepository(User)
 		private readonly userRepository: Repository<User>,

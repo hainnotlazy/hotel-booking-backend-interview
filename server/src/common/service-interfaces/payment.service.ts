@@ -8,6 +8,15 @@ export interface CreateOrderResponse {
 }
 
 export interface IPaymentService {
-	makePayment(id: number): Promise<string>;
+	/**
+	 * Describe: Make payment
+	 * @param {number} confirmationNo
+	 */
+	makePayment(confirmationNo: number): Promise<string>;
+
+	/**
+	 * Describe: Get check out link
+	 * @param {number} confirmationNo
+	 */
 	getCheckOutLink(confirmationNo: number): Promise<string>;
 }
