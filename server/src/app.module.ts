@@ -15,6 +15,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { UsersModule } from "./modules/users/users.module";
 import { RedisModule } from "@nestjs-modules/ioredis";
 import { SharedModule } from './shared/shared.module';
+import { BookingModule } from './modules/booking/booking.module';
 
 @Module({
 	imports: [
@@ -30,6 +31,7 @@ import { SharedModule } from './shared/shared.module';
 		AuthModule,
 		UsersModule,
 		SharedModule,
+		BookingModule,
 	],
 	controllers: [AppController],
 	providers: [
